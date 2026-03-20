@@ -1,11 +1,9 @@
 import pandas as pd
-import json
 import os
 
 def load_data(file):
     try:
-        df = pd.read_csv(file)
-        return df
+        return pd.read_csv(file)
     except:
         return None
 
@@ -13,14 +11,12 @@ def load_data(file):
 def save_user_data(email, df):
     os.makedirs("user_data", exist_ok=True)
     filepath = f"user_data/{email}.json"
-    with open(filepath, "w") as f:
-        f.write(df.to_json())
+    df.to_json(filepath)
 
 
 def load_user_data(email):
     filepath = f"user_data/{email}.json"
     try:
-        with open(filepath, "r") as f:
-            return pd.read_json(f.read())
+        return pd.read_json(filepath)
     except:
         return None
