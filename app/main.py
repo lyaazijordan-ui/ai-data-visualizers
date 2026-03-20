@@ -10,12 +10,12 @@ st.set_page_config(page_title="AI Data Visualizer", layout="wide")
 if not login():
     st.stop()
 
+# SIDEBAR
 st.sidebar.title("Menu")
-
 if st.sidebar.button("Logout"):
     logout()
 
-st.title("🚀 AI Data Visualizer")
+st.title("🚀 AI Data Visualizer (FREE VERSION)")
 
 # LOAD SAVED DATA
 saved_df = load_user_data(st.session_state.user_email)
@@ -25,7 +25,7 @@ if saved_df is not None:
 
 # TABS
 tab1, tab2, tab3, tab4 = st.tabs(
-    ["📁 Data", "📊 Charts", "🤖 AI Insights", "📄 Report"]
+    ["📁 Data", "📊 Charts", "🤖 Insights", "📄 Report"]
 )
 
 # 📁 DATA TAB
@@ -60,14 +60,14 @@ with tab2:
     else:
         st.warning("Upload data first")
 
-# 🤖 AI INSIGHTS TAB
+# 🤖 INSIGHTS TAB
 with tab3:
     df = st.session_state.get("df")
 
     if df is not None:
-        if st.button("Generate AI Insights"):
+        if st.button("Generate Insights"):
             insights = generate_insights(df)
-            st.write(insights)
+            st.text(insights)
     else:
         st.warning("Upload data first")
 
