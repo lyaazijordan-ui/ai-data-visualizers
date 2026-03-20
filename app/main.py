@@ -1,51 +1,81 @@
-# app/main.py
 import streamlit as st
 from auth import login, logout
-from data_engine import load_data
-from ai_engine import generate_chart
+from data_engine import load_data, save_user_data, load_user_data
+from ai_engine import generate_chart, generate_insights
 from report import generate_pdf
 
 st.set_page_config(page_title="AI Data Visualizer", layout="wide")
 
-# --- LOGIN ---
+# LOGIN
 if not login():
-    st.stop()  # Stop here if user not logged in
+    st.stop()
 
 st.sidebar.title("Menu")
-menu = st.sidebar.radio("Select Option", ["Upload CSV", "Generate Charts", "Generate PDF", "Logout"])
 
-# --- LOGOUT ---
-if menu == "Logout":
+if st.sidebar.button("Logout"):
     logout()
 
-# --- UPLOAD CSV ---
-if menu == "Upload CSV":
-    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+st.title("🚀 AI Data Visualizer")
+
+# LOAD SAVED DATA
+saved_df = load_user_data(st.session_state.user_email)
+if saved_df is not None:
+    st.session_state["df"] = saved_df
+    st.success("Loaded saved data")
+
+# TABS
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["📁 Data", "📊 Charts", "🤖 AI Insights", "📄 Report"]
+)
+
+# 📁 DATA TAB
+with tab1:
+    uploaded_file = st.file_uploader("Upload CSV", type="csv")
+
     if uploaded_file:
         df = load_data(uploaded_file)
         if df is not None:
+            st.session_state["df"] = df
             st.dataframe(df)
 
-# --- CHARTS ---
-if menu == "Generate Charts":
-    if "logged_in" in st.session_state and st.session_state.logged_in:
-        uploaded_file = st.file_uploader("Choose a CSV file first", type="csv", key="chart_upload")
-        if uploaded_file:
-            df = load_data(uploaded_file)
-            if df is not None:
-                st.subheader("AI Chart Generator")
-                x_col = st.selectbox("X-axis", df.columns)
-                y_col = st.selectbox("Y-axis", df.columns)
-                chart_type = st.selectbox("Chart Type", ["Line", "Bar", "Scatter"])
-                if st.button("Generate Chart"):
-                    generate_chart(df, chart_type, x_col, y_col)
+            if st.button("Save Data"):
+                save_user_data(st.session_state.user_email, df)
+                st.success("Data saved!")
 
-# --- PDF REPORT ---
-if menu == "Generate PDF":
-    if "logged_in" in st.session_state and st.session_state.logged_in:
-        uploaded_file = st.file_uploader("Choose a CSV file first", type="csv", key="pdf_upload")
-        if uploaded_file:
-            df = load_data(uploaded_file)
-            if df is not None:
-                st.subheader("Generate PDF Report")
-                generate_pdf(df)
+# 📊 CHART TAB
+with tab2:
+    df = st.session_state.get("df")
+
+    if df is not None:
+        col1, col2 = st.columns(2)
+
+        with col1:
+            x = st.selectbox("X-axis", df.columns)
+            y = st.selectbox("Y-axis", df.columns)
+            chart_type = st.selectbox("Chart Type", ["Line", "Bar", "Scatter"])
+
+        with col2:
+            if st.button("Generate Chart"):
+                generate_chart(df, chart_type, x, y)
+    else:
+        st.warning("Upload data first")
+
+# 🤖 AI INSIGHTS TAB
+with tab3:
+    df = st.session_state.get("df")
+
+    if df is not None:
+        if st.button("Generate AI Insights"):
+            insights = generate_insights(df)
+            st.write(insights)
+    else:
+        st.warning("Upload data first")
+
+# 📄 REPORT TAB
+with tab4:
+    df = st.session_state.get("df")
+
+    if df is not None:
+        generate_pdf(df)
+    else:
+        st.warning("Upload data first")
