@@ -1,13 +1,5 @@
 import streamlit as st
 import plotly.express as px
-import os
-from openai import OpenAI
-
-# API key handling (local + cloud)
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"]
-)
-
 
 def generate_chart(df, chart_type, x, y):
     if chart_type == "Line":
@@ -21,22 +13,32 @@ def generate_chart(df, chart_type, x, y):
 
 
 def generate_insights(df):
-    sample = df.head().to_string()
+    insights = []
 
-    prompt = f"""
-    Analyze this dataset:
-    {sample}
+    # Basic dataset info
+    insights.append(f"📊 Dataset has {df.shape[0]} rows and {df.shape[1]} columns.")
 
-    Provide:
-    - Key trends
-    - Patterns
-    - Insights
-    - Recommendations
-    """
+    # Column types
+    insights.append("\n🧾 Columns:")
+    for col in df.columns:
+        insights.append(f"- {col} ({df[col].dtype})")
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
-    )
+    # Numeric analysis
+    numeric_cols = df.select_dtypes(include='number').columns
 
-    return response.choices[0].message.content
+    if len(numeric_cols) > 0:
+        insights.append("\n📈 Numeric Insights:")
+        for col in numeric_cols:
+            insights.append(
+                f"{col}: mean={df[col].mean():.2f}, max={df[col].max()}, min={df[col].min()}"
+            )
+
+    # Missing values
+    missing = df.isnull().sum()
+    if missing.sum() > 0:
+        insights.append("\n⚠️ Missing Values:")
+        for col in missing.index:
+            if missing[col] > 0:
+                insights.append(f"{col}: {missing[col]} missing")
+
+    return "\n".join(insights)
