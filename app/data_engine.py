@@ -1,15 +1,26 @@
-# app/data_engine.py
 import pandas as pd
-import streamlit as st
+import json
+import os
 
-def load_data(uploaded_file):
-    """
-    Load CSV file into a pandas DataFrame.
-    """
+def load_data(file):
     try:
-        df = pd.read_csv(uploaded_file)
-        st.success("CSV loaded successfully!")
+        df = pd.read_csv(file)
         return df
-    except Exception as e:
-        st.error(f"Error loading CSV: {e}")
+    except:
+        return None
+
+
+def save_user_data(email, df):
+    os.makedirs("user_data", exist_ok=True)
+    filepath = f"user_data/{email}.json"
+    with open(filepath, "w") as f:
+        f.write(df.to_json())
+
+
+def load_user_data(email):
+    filepath = f"user_data/{email}.json"
+    try:
+        with open(filepath, "r") as f:
+            return pd.read_json(f.read())
+    except:
         return None
