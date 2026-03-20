@@ -1,25 +1,42 @@
-# app/ai_engine.pyb
-import os
-import matplotlib.pyplot as plt
-import seaborn as sns
 import streamlit as st
-OPEN_AI_KEY =
-os.getenv("OPENAI_API_KEY") or
-st.secrets["OPENAI_API_KEY"]
+import plotly.express as px
+import os
+from openai import OpenAI
 
-def generate_chart(df, chart_type, x_col, y_col):
-    """
-    Generate and display a chart (line, bar, scatter) using matplotlib/seaborn.
-    """
-    plt.figure(figsize=(8,5))
-    
+# API key handling (local + cloud)
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"]
+)
+
+
+def generate_chart(df, chart_type, x, y):
     if chart_type == "Line":
-        sns.lineplot(data=df, x=x_col, y=y_col)
+        fig = px.line(df, x=x, y=y)
     elif chart_type == "Bar":
-        sns.barplot(data=df, x=x_col, y=y_col)
-    elif chart_type == "Scatter":
-        sns.scatterplot(data=df, x=x_col, y=y_col)
-    
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    st.pyplot(plt)
+        fig = px.bar(df, x=x, y=y)
+    else:
+        fig = px.scatter(df, x=x, y=y)
+
+    st.plotly_chart(fig)
+
+
+def generate_insights(df):
+    sample = df.head().to_string()
+
+    prompt = f"""
+    Analyze this dataset:
+    {sample}
+
+    Provide:
+    - Key trends
+    - Patterns
+    - Insights
+    - Recommendations
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return response.choices[0].message.content
