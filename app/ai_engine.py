@@ -1,7 +1,11 @@
-# app/ai_engine.py
+# app/ai_engine.pyb
+import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
+OPEN_AI_KEY =
+os.getenv("OPENAI_API_KEY") or
+st.secrets["OPENAI_API_KEY"]
 
 def generate_chart(df, chart_type, x_col, y_col):
     """
