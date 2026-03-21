@@ -1,8 +1,7 @@
-# main.py
+# main.py# app/main.py
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # allow app/ imports
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # Add current folder to path
 from app.auth import login, signup, load_user_settings, save_user_settings
 from app.db import save_data, load_data
 import streamlit as st
