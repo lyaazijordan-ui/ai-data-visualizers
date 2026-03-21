@@ -1,10 +1,8 @@
-# auth.py
 import sqlite3
 import streamlit as st
 
 DB = "users.db"
 
-# Initialize database
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -19,7 +17,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Sign up a new user
 def signup(username, password):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -34,7 +31,6 @@ def signup(username, password):
     finally:
         conn.close()
 
-# Log in existing user
 def login(username, password):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -48,7 +44,6 @@ def login(username, password):
         st.error("Login failed. Check your username/password.")
         return False
 
-# Load user settings
 def load_user_settings(username):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -60,7 +55,6 @@ def load_user_settings(username):
     else:
         return {"theme": "plotly_dark", "chart_color": "Agsunset"}
 
-# Save user settings
 def save_user_settings(username, theme=None, chart_color=None):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -71,5 +65,4 @@ def save_user_settings(username, theme=None, chart_color=None):
     conn.commit()
     conn.close()
 
-# Initialize DB on import
 init_db()
