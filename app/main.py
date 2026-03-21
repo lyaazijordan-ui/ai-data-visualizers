@@ -6,6 +6,8 @@ from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
 from reportlab.lib.styles import getSampleStyleSheet
 from app.auth import login, signup, load_user_settings, save_user_settings
+from app.db import save_data, load_data
+import time
 
 st.set_page_config(page_title="AI Data Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
@@ -59,7 +61,6 @@ elif page == "Upload & Visualize":
     if df is not None:
         st.dataframe(df.head(), height=250)
 
-        # Stats Cards
         st.markdown("### 📊 Dataset Summary")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Rows", df.shape[0])
