@@ -5,8 +5,7 @@ import numpy as np
 from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
 from reportlab.lib.styles import getSampleStyleSheet
-from auth import login, signup
-from db import save_csv, load_csv, save_user, load_user
+from auth import login, signup, load_user_settings, save_user_settings
 import time
 
 st.set_page_config(page_title="AI Data Dashboard", layout="wide", initial_sidebar_state="collapsed")
@@ -14,16 +13,6 @@ st.set_page_config(page_title="AI Data Dashboard", layout="wide", initial_sideba
 # -----------------------------
 # Sidebar + Navigation
 # -----------------------------
-st.markdown(
-    """
-    <style>
-    .sidebar .sidebar-content {background-color: #1f2c56; color: white; padding: 20px;}
-    .sidebar .sidebar-content h2 {font-size: 24px;}
-    .sidebar .sidebar-content input, .sidebar .sidebar-content select {margin-bottom: 10px;}
-    </style>
-    """, unsafe_allow_html=True
-)
-
 st.sidebar.title("🌐 AI Dashboard")
 page = st.sidebar.radio("Navigation", ["Login / Signup", "Upload & Visualize", "Reports", "Settings", "Logout"])
 
@@ -35,15 +24,15 @@ if page == "Login / Signup":
     choice = st.radio("Choose action", ["Login", "Sign Up"])
     username = st.text_input("Username", max_chars=20)
     password = st.text_input("Password", type="password", max_chars=50)
-    if choice == "Login":
-        if st.button("Login"):
-            if login(username, password):
-                st.success(f"Logged in as {username}")
-                st.experimental_rerun()
-    else:
-        if st.button("Sign Up"):
-            if signup(username, password):
-                st.experimental_rerun()
+    
+    if choice == "Login" and st.button("Login"):
+        if login(username, password):
+            st.session_state.update(load_user_settings(username))
+            st.experimental_rerun()
+            
+    elif choice == "Sign Up" and st.button("Sign Up"):
+        if signup(username, password):
+            st.experimental_rerun()
 
 # -----------------------------
 # Logout
@@ -65,19 +54,13 @@ elif page == "Upload & Visualize":
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
         st.session_state["current_df"] = df
-        if "username" in st.session_state:
-            save_csv(st.session_state["username"], df)
     else:
         df = st.session_state.get("current_df")
-        if "username" in st.session_state:
-            df = df or load_csv(st.session_state["username"])
 
     if df is not None:
         st.dataframe(df.head(), height=250)
 
-        # -----------------------------
         # Stats Cards
-        # -----------------------------
         st.markdown("### 📊 Dataset Summary")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Rows", df.shape[0])
@@ -94,21 +77,19 @@ elif page == "Upload & Visualize":
         template_theme = st.session_state.get("theme","plotly_dark")
         color_args = {"color": color_col} if color_col else {}
         
-        # -----------------------------
-        # Real-time animation simulation
-        # -----------------------------
-        steps = 30  # number of animation frames
+        # Animated chart simulation
+        steps = 30
         for i in range(steps):
             subset = df.sample(frac=min(1,(i+1)/steps))
             if chart_type=="Line":
                 fig = px.line(subset, x=x_col, y=y_col, **color_args, template=template_theme)
             elif chart_type=="Bar":
                 fig = px.bar(subset, x=x_col, y=y_col, **color_args, template=template_theme)
-            elif chart_type=="Scatter":
+            else:
                 fig = px.scatter(subset, x=x_col, y=y_col, **color_args, template=template_theme)
             fig.update_traces(marker=dict(size=10, line=dict(width=1, color='DarkSlateGrey')), selector=dict(mode='markers+lines'))
             st.plotly_chart(fig, use_container_width=True)
-            time.sleep(0.05)  # smooth animated effect
+            time.sleep(0.05)
 
         st.download_button("Download Chart HTML", fig.to_html(), file_name="chart.html", mime="text/html")
 
@@ -119,7 +100,7 @@ elif page == "Reports":
     if "username" not in st.session_state:
         st.warning("Please log in first")
     else:
-        df = st.session_state.get("current_df") or load_csv(st.session_state["username"])
+        df = st.session_state.get("current_df")
         if df is not None:
             buffer = BytesIO()
             doc = SimpleDocTemplate(buffer)
@@ -148,5 +129,5 @@ elif page == "Settings":
             st.session_state["theme"] = theme
             st.session_state["chart_color"] = chart_color
             st.session_state["username"] = username
-            save_user(username, "", theme=theme, chart_color=chart_color)
+            save_user_settings(username, theme, chart_color)
             st.success("Settings saved!")
