@@ -1,31 +1,64 @@
+import sqlite3
 import pandas as pd
-import requests
-import json
-import streamlit as st
+from pathlib import Path
 
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
+DB_PATH = Path("app_data.db")
 
-TABLE_NAME = "user_data"
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT,
+            theme TEXT DEFAULT 'dark',
+            chart_color TEXT DEFAULT 'Agsunset'
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS csv_data (
+            username TEXT,
+            csv_content BLOB,
+            PRIMARY KEY(username)
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-def save_data(user_email, df: pd.DataFrame):
-    records = df.to_dict(orient="records")
-    payload = [{"user": user_email, "data": json.dumps(records)}]
-    response = requests.post(f"{SUPABASE_URL}/rest/v1/{TABLE_NAME}", headers=HEADERS, json=payload)
-    if response.status_code in [200, 201]:
-        return True
-    else:
-        st.error(f"Save failed: {response.text}")
-        return False
+init_db()
 
-def load_data(user_email):
-    params = {"user": f"eq.{user_email}"}
-    response = requests.get(f"{SUPABASE_URL}/rest/v1/{TABLE_NAME}", headers=HEADERS, params=params)
-    if response.status_code == 200:
-        data = response.json()
-        if data:
-            records = json.loads(data[0]["data"])
-            df = pd.DataFrame(records)
-            return df
+def save_user(username, password, theme="dark", chart_color="Agsunset"):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO users (username, password, theme, chart_color)
+        VALUES (?, ?, ?, ?)
+    """, (username, password, theme, chart_color))
+    conn.commit()
+    conn.close()
+
+def load_user(username):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, password, theme, chart_color FROM users WHERE username=?", (username,))
+    user = cursor.fetchone()
+    conn.close()
+    return user
+
+def save_csv(username, df: pd.DataFrame):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    cursor.execute("INSERT OR REPLACE INTO csv_data (username, csv_content) VALUES (?, ?)", (username, csv_bytes))
+    conn.commit()
+    conn.close()
+
+def load_csv(username):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT csv_content FROM csv_data WHERE username=?", (username,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        return pd.read_csv(pd.compat.StringIO(result[0].decode("utf-8")))
     return None
