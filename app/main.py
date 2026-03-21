@@ -1,4 +1,8 @@
-# app/main.py
+import sys
+import os
+
+# Add parent directory to Python path so 'app' can be imported
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 import pandas as pd
