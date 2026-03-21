@@ -1,125 +1,126 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import numpy as np
 from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
 from reportlab.lib.styles import getSampleStyleSheet
-from auth import login, logout
-from db import save_data, load_data
+from auth import login, signup
+from db import save_csv, load_csv, save_user, load_user
+import time
 
-# -------------------------
-# Page config
-# -------------------------
-st.set_page_config(
-    page_title="AI Data Lab",
-    layout="wide",
-    initial_sidebar_state="expanded",
+st.set_page_config(page_title="AI Data Dashboard", layout="wide", initial_sidebar_state="collapsed")
+
+# -----------------------------
+# Sidebar + Navigation
+# -----------------------------
+st.markdown(
+    """
+    <style>
+    .sidebar .sidebar-content {background-color: #1f2c56; color: white; padding: 20px;}
+    .sidebar .sidebar-content h2 {font-size: 24px;}
+    .sidebar .sidebar-content input, .sidebar .sidebar-content select {margin-bottom: 10px;}
+    </style>
+    """, unsafe_allow_html=True
 )
 
-# -------------------------
-# Theme toggle
-# -------------------------
-if "theme" not in st.session_state:
-    st.session_state["theme"] = "dark"
+st.sidebar.title("🌐 AI Dashboard")
+page = st.sidebar.radio("Navigation", ["Login / Signup", "Upload & Visualize", "Reports", "Settings", "Logout"])
 
-theme_option = st.sidebar.selectbox("Theme", ["Dark", "Light"])
-st.session_state["theme"] = "plotly_dark" if theme_option == "Dark" else "plotly_white"
+# -----------------------------
+# Login / Signup
+# -----------------------------
+if page == "Login / Signup":
+    st.markdown("<h1 style='text-align:center'>Welcome to AI Data Dashboard</h1>", unsafe_allow_html=True)
+    choice = st.radio("Choose action", ["Login", "Sign Up"])
+    username = st.text_input("Username", max_chars=20)
+    password = st.text_input("Password", type="password", max_chars=50)
+    if choice == "Login":
+        if st.button("Login"):
+            if login(username, password):
+                st.success(f"Logged in as {username}")
+                st.experimental_rerun()
+    else:
+        if st.button("Sign Up"):
+            if signup(username, password):
+                st.experimental_rerun()
 
-# -------------------------
-# Sidebar navigation
-# -------------------------
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-
-st.sidebar.title("🚀 AI Data Lab")
-page = st.sidebar.radio("Navigate", ["Login", "Upload & Visualize", "Reports", "Logout"])
-
-# -------------------------
-# LOGIN PAGE
-# -------------------------
-if page == "Login":
-    st.markdown("<h1 style='text-align:center'>Welcome to AI Data Lab</h1>", unsafe_allow_html=True)
-    st.subheader("Login")
-    email = st.text_input("Email", placeholder="Enter your email", key="login_email")
-    password = st.text_input("Password", type="password", placeholder="Enter password", key="login_pass")
-    if st.button("Login", use_container_width=True):
-        if login(email, password):
-            st.session_state["authenticated"] = True
-            st.success("Logged in successfully! 🚀")
-            st.experimental_rerun()
-
-# -------------------------
-# LOGOUT PAGE
-# -------------------------
+# -----------------------------
+# Logout
+# -----------------------------
 elif page == "Logout":
-    if st.session_state.get("authenticated"):
-        logout()
-        st.session_state["authenticated"] = False
-        st.experimental_rerun()
+    if "username" in st.session_state:
+        st.session_state.clear()
+        st.success("Logged out")
     else:
         st.info("You are not logged in")
 
-# -------------------------
-# UPLOAD & VISUALIZE
-# -------------------------
+# -----------------------------
+# Upload & Visualize
+# -----------------------------
 elif page == "Upload & Visualize":
-    if not st.session_state.get("authenticated"):
-        st.warning("Login first!")
+    if "username" not in st.session_state:
+        st.warning("Please log in first for full features")
+    uploaded_file = st.file_uploader("Upload CSV", type="csv")
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        st.session_state["current_df"] = df
+        if "username" in st.session_state:
+            save_csv(st.session_state["username"], df)
     else:
-        st.markdown("## Upload CSV and generate charts")
-        uploaded_file = st.file_uploader("Choose CSV", type="csv", label_visibility="collapsed")
-        if uploaded_file:
-            df = pd.read_csv(uploaded_file)
-            st.dataframe(df.head())
+        df = st.session_state.get("current_df")
+        if "username" in st.session_state:
+            df = df or load_csv(st.session_state["username"])
 
-            save_data(st.session_state["user"], df)
+    if df is not None:
+        st.dataframe(df.head(), height=250)
 
-            # Chart options
-            st.subheader("Chart Settings")
-            chart_type = st.selectbox("Chart type", ["Line", "Bar", "Scatter"])
-            x_col = st.selectbox("X-axis", df.columns)
-            y_col = st.selectbox("Y-axis", df.columns)
-            color_col = st.selectbox("Color column (optional)", [None]+list(df.columns))
+        # -----------------------------
+        # Stats Cards
+        # -----------------------------
+        st.markdown("### 📊 Dataset Summary")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Rows", df.shape[0])
+        col2.metric("Columns", df.shape[1])
+        col3.metric("Mean Y", round(df.select_dtypes(include=np.number).mean().mean(),2))
+        col4.metric("Max Y", round(df.select_dtypes(include=np.number).max().max(),2))
 
-            # Chart generation
-            st.subheader("Generated Chart")
-            fig = None
-            color_args = {"color": color_col} if color_col else {}
-            gradient = px.colors.sequential.Agsunset
+        st.markdown("---")
+        st.subheader("Interactive Chart")
+        chart_type = st.selectbox("Chart Type", ["Line", "Bar", "Scatter"])
+        x_col = st.selectbox("X-axis", df.columns)
+        y_col = st.selectbox("Y-axis", df.columns)
+        color_col = st.selectbox("Color column (optional)", [None]+list(df.columns))
+        template_theme = st.session_state.get("theme","plotly_dark")
+        color_args = {"color": color_col} if color_col else {}
+        
+        # -----------------------------
+        # Real-time animation simulation
+        # -----------------------------
+        steps = 30  # number of animation frames
+        for i in range(steps):
+            subset = df.sample(frac=min(1,(i+1)/steps))
+            if chart_type=="Line":
+                fig = px.line(subset, x=x_col, y=y_col, **color_args, template=template_theme)
+            elif chart_type=="Bar":
+                fig = px.bar(subset, x=x_col, y=y_col, **color_args, template=template_theme)
+            elif chart_type=="Scatter":
+                fig = px.scatter(subset, x=x_col, y=y_col, **color_args, template=template_theme)
+            fig.update_traces(marker=dict(size=10, line=dict(width=1, color='DarkSlateGrey')), selector=dict(mode='markers+lines'))
+            st.plotly_chart(fig, use_container_width=True)
+            time.sleep(0.05)  # smooth animated effect
 
-            if chart_type == "Line":
-                fig = px.line(df, x=x_col, y=y_col, **color_args, template=st.session_state["theme"])
-            elif chart_type == "Bar":
-                fig = px.bar(df, x=x_col, y=y_col, **color_args, template=st.session_state["theme"])
-            elif chart_type == "Scatter":
-                fig = px.scatter(df, x=x_col, y=y_col, **color_args, template=st.session_state["theme"])
+        st.download_button("Download Chart HTML", fig.to_html(), file_name="chart.html", mime="text/html")
 
-            fig.update_traces(marker=dict(colorscale=gradient, showscale=True), selector=dict(mode="markers+lines"))
-
-            # Animated update effect
-            st.plotly_chart(fig, use_container_width=True, theme="streamlit", config={"displayModeBar": True})
-
-            # Downloads
-            # HTML always works
-            st.download_button("Download Interactive Chart (HTML)", fig.to_html(), file_name="chart.html", mime="text/html")
-            # PNG fallback
-            try:
-                buf = BytesIO()
-                fig.write_image(buf, format="png")
-                st.download_button("Download Chart PNG", buf, file_name="chart.png", mime="image/png")
-            except:
-                st.info("PNG download not available in cloud; use HTML download")
-
-# -------------------------
-# REPORT PAGE
-# -------------------------
+# -----------------------------
+# Reports
+# -----------------------------
 elif page == "Reports":
-    if not st.session_state.get("authenticated"):
-        st.warning("Login first!")
+    if "username" not in st.session_state:
+        st.warning("Please log in first")
     else:
-        df = load_data(st.session_state["user"])
+        df = st.session_state.get("current_df") or load_csv(st.session_state["username"])
         if df is not None:
-            st.subheader("Download PDF Report")
             buffer = BytesIO()
             doc = SimpleDocTemplate(buffer)
             styles = getSampleStyleSheet()
@@ -128,6 +129,24 @@ elif page == "Reports":
             elements.append(Table(data_table))
             doc.build(elements)
             buffer.seek(0)
-            st.download_button("Download PDF", buffer, file_name="report.pdf")
+            st.download_button("Download PDF Report", buffer, file_name="report.pdf")
         else:
-            st.info("No data uploaded yet")
+            st.info("No data available")
+
+# -----------------------------
+# Settings
+# -----------------------------
+elif page == "Settings":
+    if "username" not in st.session_state:
+        st.warning("Please log in first")
+    else:
+        st.subheader("User Settings")
+        theme = st.selectbox("Theme", ["plotly_dark", "plotly_white"], index=0)
+        chart_color = st.text_input("Default Chart Gradient", st.session_state.get("chart_color", "Agsunset"))
+        username = st.text_input("Username", st.session_state.get("username"))
+        if st.button("Save Settings"):
+            st.session_state["theme"] = theme
+            st.session_state["chart_color"] = chart_color
+            st.session_state["username"] = username
+            save_user(username, "", theme=theme, chart_color=chart_color)
+            st.success("Settings saved!")
