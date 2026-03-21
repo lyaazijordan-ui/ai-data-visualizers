@@ -5,8 +5,7 @@ import numpy as np
 from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
 from reportlab.lib.styles import getSampleStyleSheet
-from auth import login, signup, load_user_settings, save_user_settings
-import time
+from app.auth import login, signup, load_user_settings, save_user_settings
 
 st.set_page_config(page_title="AI Data Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
