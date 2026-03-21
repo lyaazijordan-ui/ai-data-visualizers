@@ -1,3 +1,5 @@
+from auth import login, signup, load_user_settings, save_user_settings
+from db import save_data, load_data
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -5,8 +7,8 @@ import numpy as np
 from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
 from reportlab.lib.styles import getSampleStyleSheet
-from app.auth import login, signup, load_user_settings, save_user_settings
-from app.db import save_data, load_data
+from auth import login, signup, load_user_settings, save_user_settings
+from db import save_data, load_data
 import time
 
 st.set_page_config(page_title="AI Data Dashboard", layout="wide", initial_sidebar_state="collapsed")
