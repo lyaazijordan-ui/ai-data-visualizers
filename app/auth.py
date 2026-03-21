@@ -1,21 +1,75 @@
+# auth.py
+import sqlite3
 import streamlit as st
-from db import save_user, load_user
 
+DB = "users.db"
+
+# Initialize database
+def init_db():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT,
+            theme TEXT DEFAULT 'plotly_dark',
+            chart_color TEXT DEFAULT 'Agsunset'
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Sign up a new user
 def signup(username, password):
-    existing = load_user(username)
-    if existing:
-        st.error("Username already exists!")
-        return False
-    save_user(username, password)
-    st.success("Account created!")
-    return True
-
-def login(username, password):
-    user = load_user(username)
-    if user and user[1] == password:
-        st.session_state["username"] = username
-        st.session_state["theme"] = user[2]
-        st.session_state["chart_color"] = user[3]
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    try:
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
+        st.success(f"User '{username}' created! You can now log in.")
         return True
-    st.error("Login failed!")
-    return False
+    except sqlite3.IntegrityError:
+        st.error("Username already exists. Try another.")
+        return False
+    finally:
+        conn.close()
+
+# Log in existing user
+def login(username, password):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT password FROM users WHERE username=?", (username,))
+    result = c.fetchone()
+    conn.close()
+    if result and result[0] == password:
+        st.session_state["username"] = username
+        return True
+    else:
+        st.error("Login failed. Check your username/password.")
+        return False
+
+# Load user settings
+def load_user_settings(username):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT theme, chart_color FROM users WHERE username=?", (username,))
+    result = c.fetchone()
+    conn.close()
+    if result:
+        return {"theme": result[0], "chart_color": result[1]}
+    else:
+        return {"theme": "plotly_dark", "chart_color": "Agsunset"}
+
+# Save user settings
+def save_user_settings(username, theme=None, chart_color=None):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    if theme:
+        c.execute("UPDATE users SET theme=? WHERE username=?", (theme, username))
+    if chart_color:
+        c.execute("UPDATE users SET chart_color=? WHERE username=?", (chart_color, username))
+    conn.commit()
+    conn.close()
+
+# Initialize DB on import
+init_db()
