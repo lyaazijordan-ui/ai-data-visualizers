@@ -2,9 +2,6 @@ import streamlit as st
 import requests
 import json
 
-# ========================
-# SUPABASE CONFIG
-# ========================
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
@@ -14,9 +11,6 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# ========================
-# LOGIN FUNCTION
-# ========================
 def login(email: str, password: str) -> bool:
     if not email or not password:
         st.warning("Enter both email and password")
@@ -36,9 +30,6 @@ def login(email: str, password: str) -> bool:
         st.error(f"Login error: {e}")
         return False
 
-# ========================
-# LOGOUT FUNCTION
-# ========================
 def logout():
     for key in ["user", "access_token", "authenticated"]:
         if key in st.session_state:
