@@ -1,7 +1,7 @@
 # main.py
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # Fix for app imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # allow app/ imports
 
 from app.auth import login, signup, load_user_settings, save_user_settings
 from app.db import save_data, load_data
@@ -14,35 +14,36 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
 from reportlab.lib.styles import getSampleStyleSheet
 import time
 
-st.set_page_config(page_title="AI Data Dashboard", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="AI Data Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 # -----------------------------
-# Sidebar + Navigation
+# Sidebar Navigation
 # -----------------------------
-st.sidebar.title("🌐 AI Dashboard")
-page = st.sidebar.radio("Navigation", ["Login / Signup", "Upload & Visualize", "Reports", "Settings", "Logout"])
+with st.sidebar:
+    st.markdown("<h2 style='text-align:center'>🌐 AI Dashboard</h2>", unsafe_allow_html=True)
+    page = st.radio("Go to", ["Home", "Upload & Visualize", "Reports", "Settings", "Logout"])
 
 # -----------------------------
-# Login / Signup
+# Home / Login & Signup
 # -----------------------------
-if page == "Login / Signup":
-    st.markdown("<h1 style='text-align:center'>Welcome to AI Data Dashboard</h1>", unsafe_allow_html=True)
+if page == "Home":
+    st.markdown("<h1 style='text-align:center;color:#4B0082'>Welcome to AI Data Dashboard</h1>", unsafe_allow_html=True)
     choice = st.radio("Choose action", ["Login", "Sign Up"])
     username = st.text_input("Username", max_chars=20)
     password = st.text_input("Password", type="password", max_chars=50)
-    
+
     if choice == "Login" and st.button("Login"):
         if login(username, password):
             st.session_state.update(load_user_settings(username))
-            st.stop()  # Modern replacement for experimental_rerun
-            
+            st.success(f"Welcome back, {username}!")
+            st.stop()
         else:
-            st.error("Login failed. Check your username/password.")
+            st.error("Login failed. Check username/password.")
 
     elif choice == "Sign Up" and st.button("Sign Up"):
         if signup(username, password):
             st.success("Sign up successful! Please log in.")
-            st.stop()  # Refresh page
+            st.stop()
 
 # -----------------------------
 # Logout
@@ -68,6 +69,7 @@ elif page == "Upload & Visualize":
         df = st.session_state.get("current_df")
 
     if df is not None:
+        st.markdown("### 📋 Dataset Preview")
         st.dataframe(df.head(), height=250)
 
         st.markdown("### 📊 Dataset Summary")
@@ -85,8 +87,7 @@ elif page == "Upload & Visualize":
         color_col = st.selectbox("Color column (optional)", [None]+list(df.columns))
         template_theme = st.session_state.get("theme","plotly_dark")
         color_args = {"color": color_col} if color_col else {}
-        
-        # Animated chart simulation
+
         steps = 30
         for i in range(steps):
             subset = df.sample(frac=min(1,(i+1)/steps))
@@ -96,9 +97,11 @@ elif page == "Upload & Visualize":
                 fig = px.bar(subset, x=x_col, y=y_col, **color_args, template=template_theme)
             else:
                 fig = px.scatter(subset, x=x_col, y=y_col, **color_args, template=template_theme)
-            fig.update_traces(marker=dict(size=10, line=dict(width=1, color='DarkSlateGrey')), selector=dict(mode='markers+lines'))
+
+            fig.update_traces(marker=dict(size=12, line=dict(width=2, color='DarkSlateGrey')), selector=dict(mode='markers+lines'))
+            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig, use_container_width=True)
-            time.sleep(0.05)
+            time.sleep(0.03)
 
         st.download_button("Download Chart HTML", fig.to_html(), file_name="chart.html", mime="text/html")
 
